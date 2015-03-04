@@ -6,14 +6,15 @@ use JSON;
 use Data::Dumper;
 use Encode;
 use DBI qw(:sql_types);
-#use Smart::Comments;
+use Smart::Comments;
 use Net::SMTP;
 use POSIX;
+use Mail::Sender;
 my @user_mails = ('');
 my @admin_mails = ('');
 my $from = '';
-my $smtp_host = '';
-my $pop_host = '';
+my $smtp_host = 'smtp.qq.com';
+my $pop_host = 'pop.qq.com';
 my $username = "";
 my $password = "";
 my $url = "http://xueqiu.com/user/login";
@@ -34,8 +35,8 @@ $cookie = "Hm_lvt_1db88642e346389874251b5a1eded6e3=1424835754,1424850192,1424940
 
 #my $res = $ua->post($url,
 #		[
-#		username=>''a,
-#		password=>'',
+#		username=>'huadaonan@163.com',
+#		password=>'qazwsx1984',
 #		],
 #		);
 #@vgroup_adr = ("http://xueqiu.com/P/ZH187525");
@@ -55,7 +56,7 @@ my $dir = "/root/monitor";
 #### get the group id
 
 my @vgroup_adr = ();
-my $custom_adr = "http://xueqiu.com/xxxx";
+my $custom_adr = "http://xueqiu.com/1297321670";
 my $ua = LWP::UserAgent->new("timeout=>60");
 my $cookies = $ua->cookie_jar($cookie_jar);
 $ua->default_header('cookie'=>$cookie);
@@ -178,7 +179,7 @@ foreach my $group_adr(@vgroup_adr){
 			}
 		};
 		if(@array_stock_number){
-	 		$vvstrings = "GROUP:http://xueqiu.com/P/$group_adr $group_name had  removed: @array_stock_number at $update_time ";
+	 		$vvstrings = "GROUP:http://xueqiu.com/P/$group_adr $group_name  had  removed: @array_stock_number at $update_time ";
 			
 			&writeAMesg($vvstrings,@user_mails);
 			&insert_db( $group_adr,$group_name,0,$update_time,%insert_stock_move);
@@ -236,23 +237,46 @@ foreach my $group_adr(@vgroup_adr){
 
 
 sub writeAMesg{
-    my $strings = shift @_;
-    my @mailto =  @_;
-   foreach my $mailto (@mailto) {
-    my $smtp = Net::SMTP->new( $smtp_host, Timeout=>60 );
-    $smtp->auth($username, $password);
-    $smtp->mail( $from );
-    $smtp->to( $mailto );
-    $smtp->data();
-    $smtp->datasend("To: $to\n");
-    $subject = Encode::decode_utf8("雪球定制组合调仓提醒!!!");
-    $smtp->datasend("Subject:  $subject--$update_time\n");
-    $smtp->datasend("\n");
-    $smtp->datasend("$strings\n");
-    $smtp->datasend("\n");
-    $smtp->dataend();
-    $smtp->quit;
-   }
+
+	my $msg = shift @_;
+	@mail_adr = @_;
+	my $sender = new Mail::Sender{
+	        ctype=>'text/plain;charset=utf-8',
+	        encoding=> 'utf-8',
+	};
+	if($sender->MailMsg({
+	        smtp=>'smtp.qq.com',
+	        from=>'',
+	        to=> \@mail_adr,
+	        subject=>'！',
+	        msg=>$msg,
+	        auth=>'LOGIN',
+	        authid=>'',
+	        authpwd =>'',
+	}) <0) {
+	        die "error : $Mail::Sender::Error\n";
+	};
+	$sender->Close();
+
+
+
+#    my $smtp = Net::SMTP->new( $smtp_host, Timeout=>60 );
+#    $smtp->auth($username, $password);
+#   foreach my $mailto (@mailtos) {
+#    $smtp->mail( $from );
+#    $smtp->to( $mailto );
+#print $mailto."\n";
+#    $smtp->data();
+#    $smtp->datasend("To: $to\n");
+#    $subject = Encode::decode_utf8("for test 雪球定制组合调仓提醒!!!");
+#    $smtp->datasend("Subject:  $subject--$update_time\n");
+#    $smtp->datasend("\n");
+#    $smtp->datasend("$strings\n");
+#    $smtp->datasend("\n");
+#    $smtp->dataend();
+#   };
+#   $smtp->quit;
+#   @mailtos=();
 };
 
 sub insert_db {
